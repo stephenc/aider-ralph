@@ -9,6 +9,7 @@ import (
 	"os/exec"
 	"os/signal"
 	"path/filepath"
+	"regexp"
 	"strings"
 	"syscall"
 	"time"
@@ -36,22 +37,36 @@ const (
 // Config holds the application configuration
 type Config struct {
 	MaxIterations     int
-	CompletionPromise string
-	Prompt            string
-	PromptFile        string
-	Delay             int
-	Timeout           int // Timeout per iteration in seconds (0 = no timeout)
-	LogFile           string
-	Verbose           bool
-	DryRun            bool
-	AiderOpts         []string
-	DoInit            bool
-	ProjectName       string
-	ShowVersion       bool
+	CompletionPromise string // legacy/simple substring completion
+	CompletionTag     string // XML-like tag name for completion promise, e.g. "promise"
+	CompletionValue   string // value inside the tag, e.g. "COMPLETED"
+
+	Prompt     string
+	PromptFile string
+
+	SpecsFile string
+
+	NotesFile string
+
+	Delay   int
+	Timeout int // Timeout per iteration in seconds (0 = no timeout)
+
+	LogFile     string
+	Verbose     bool
+	DryRun      bool
+	AiderOpts   []string
+	DoInit      bool
+	ProjectName string
+	ShowVersion bool
 }
 
 var config Config
 var loopActive bool
+
+const defaultSpecsFile = "SPECS.md"
+const defaultPromptFile = "PROMPT.md"
+const defaultCompletionTag = "promise"
+const defaultCompletionValue = "COMPLETED"
 
 func main() {
 	parseArgs()
@@ -87,6 +102,11 @@ func parseArgs() {
 	// Manual argument parsing to allow flags in any order
 	args := os.Args[1:]
 
+	// Defaults
+	config.SpecsFile = defaultSpecsFile
+	config.CompletionTag = defaultCompletionTag
+	config.CompletionValue = defaultCompletionValue
+
 	// First, find and extract aider options after --
 	for i, arg := range args {
 		if arg == "--" {
@@ -118,9 +138,37 @@ func parseArgs() {
 			} else {
 				i++
 			}
+		case "--completion-tag":
+			if i+1 < len(args) {
+				config.CompletionTag = args[i+1]
+				i += 2
+			} else {
+				i++
+			}
+		case "--completion-value":
+			if i+1 < len(args) {
+				config.CompletionValue = args[i+1]
+				i += 2
+			} else {
+				i++
+			}
 		case "-f", "--file":
 			if i+1 < len(args) {
 				config.PromptFile = args[i+1]
+				i += 2
+			} else {
+				i++
+			}
+		case "-s", "--specs":
+			if i+1 < len(args) {
+				config.SpecsFile = args[i+1]
+				i += 2
+			} else {
+				i++
+			}
+		case "--notes-file":
+			if i+1 < len(args) {
+				config.NotesFile = args[i+1]
 				i += 2
 			} else {
 				i++
@@ -171,10 +219,20 @@ func parseArgs() {
 				config.CompletionPromise = arg[3:]
 			} else if strings.HasPrefix(arg, "--completion-promise=") {
 				config.CompletionPromise = arg[21:]
+			} else if strings.HasPrefix(arg, "--completion-tag=") {
+				config.CompletionTag = arg[len("--completion-tag="):]
+			} else if strings.HasPrefix(arg, "--completion-value=") {
+				config.CompletionValue = arg[len("--completion-value="):]
 			} else if strings.HasPrefix(arg, "-f=") {
 				config.PromptFile = arg[3:]
 			} else if strings.HasPrefix(arg, "--file=") {
 				config.PromptFile = arg[7:]
+			} else if strings.HasPrefix(arg, "-s=") {
+				config.SpecsFile = arg[3:]
+			} else if strings.HasPrefix(arg, "--specs=") {
+				config.SpecsFile = arg[8:]
+			} else if strings.HasPrefix(arg, "--notes-file=") {
+				config.NotesFile = arg[len("--notes-file="):]
 			} else if strings.HasPrefix(arg, "-d=") {
 				fmt.Sscanf(arg[3:], "%d", &config.Delay)
 			} else if strings.HasPrefix(arg, "--delay=") {
@@ -226,20 +284,32 @@ USAGE:
     aider-ralph [OPTIONS] "<prompt>" [-- AIDER_OPTIONS]
     aider-ralph [OPTIONS] -f PROMPT_FILE [-- AIDER_OPTIONS]
 
-COMMANDS:
-    --init [NAME]                Initialize project for aider-ralph
-                                 Creates SPECS.md and .ralph/ directory
+COMMON (RECOMMENDED):
+    aider-ralph -s SPECS.md -m 30 -- --model sonnet --yes
 
 OPTIONS:
     -m, --max-iterations <N>     Stop after N iterations (default: unlimited)
                                  STRONGLY RECOMMENDED as a safety net
 
-    -c, --completion-promise <TEXT>
-                                 Phrase that signals completion (checked in output)
-                                 e.g., "COMPLETE", "DONE", "FINISHED"
+    -s, --specs <PATH>           Specs file to load each iteration (default: SPECS.md)
+                                 If missing and no prompt is provided, help is shown.
 
-    -f, --file <PATH>            Read prompt from file instead of argument
+    -f, --file <PATH>            Read prompt template from file instead of argument
                                  File is re-read each iteration (live updates)
+                                 If not provided, PROMPT.md is used if present.
+
+    -c, --completion-promise <TEXT>
+                                 Legacy completion detection: substring match in output
+
+    --completion-tag <TAG>       Safer completion detection using an XML-like tag
+                                 default: promise
+
+    --completion-value <VALUE>   Value inside the completion tag
+                                 default: COMPLETED
+                                 Example: <promise>COMPLETED</promise>
+
+    --notes-file <PATH>          File to store iteration notes and feed into next iteration
+                                 If not set, .ralph/notes.md is used if it exists.
 
     -d, --delay <SECONDS>        Delay between iterations (default: 2)
 
@@ -258,33 +328,16 @@ OPTIONS:
 
 AIDER OPTIONS:
     Any options after -- are passed directly to aider.
-    Common aider options:
-        --model <MODEL>          LLM model to use (sonnet, gpt-4o, etc.)
-                                 For Ollama: --model ollama/llama2 or --model ollama/codellama
-        --api-key <PROVIDER>=<KEY>  API key for the provider
-        --yes                    Auto-confirm all prompts
-        --no-git                 Disable git integration
 
 EXAMPLES:
     # Initialize a new project
     aider-ralph --init "My Todo App"
 
-    # Simple loop with iteration limit
-    aider-ralph "Build a REST API for todos" -m 10
+    # Use default SPECS.md and PROMPT.md (if present)
+    aider-ralph -m 30 -- --model sonnet --yes
 
-    # With completion promise detection
-    aider-ralph "Implement auth. Output DONE when complete." -c "DONE" -m 20
-
-    # Using the specs file created by --init
-    aider-ralph -f SPECS.md -m 30 -c COMPLETE -- --model sonnet --yes
-
-    # Using Ollama with a local model
-    aider-ralph -f SPECS.md -m 30 -c COMPLETE -- --model ollama/llama2 --yes
-
-    # Using Ollama with CodeLlama
-    aider-ralph -f SPECS.md -m 30 -c COMPLETE -- --model ollama/codellama --yes
-
-More info: https://awesomeclaude.ai/ralph-wiggum
+    # Explicit specs and completion tag
+    aider-ralph -s SPECS.md -m 30 --completion-tag promise --completion-value COMPLETED -- --model sonnet --yes
 `)
 }
 
@@ -333,16 +386,44 @@ func validate() error {
 		return fmt.Errorf("aider is not installed. Install with: pip install aider-chat")
 	}
 
-	// Must have either prompt or prompt file
+	// If no prompt and no prompt file, we will try PROMPT.md if present, else default template.
+	// But we still require a specs file to exist (or a direct prompt argument) to avoid running with nothing.
 	if config.Prompt == "" && config.PromptFile == "" {
-		fmt.Println()
-		usage()
-		return fmt.Errorf("no prompt provided. Use a prompt argument or -f <file>")
+		if fileExists(defaultPromptFile) {
+			config.PromptFile = defaultPromptFile
+		}
 	}
 
-	// If file specified, check it exists
+	// Default notes file behavior: if not specified, use .ralph/notes.md if it exists.
+	if config.NotesFile == "" {
+		defaultNotes := filepath.Join(".ralph", "notes.md")
+		if fileExists(defaultNotes) {
+			config.NotesFile = defaultNotes
+		}
+	}
+
+	// If no prompt argument and no prompt file and no specs file, show help.
+	// We treat specs as the primary input; prompt template can be defaulted.
+	if config.Prompt == "" && config.PromptFile == "" && config.SpecsFile == "" {
+		fmt.Println()
+		usage()
+		return fmt.Errorf("no prompt or specs provided")
+	}
+
+	// If specs file is set (default SPECS.md), require it to exist unless user provided a direct prompt argument.
+	// This matches: "specs file should be assumed. showing help if no specs file or specs file not specified on the cli."
+	// Here, specs is always assumed; if it doesn't exist and user didn't provide a direct prompt, we error with help.
+	if config.SpecsFile != "" {
+		if !fileExists(config.SpecsFile) && config.Prompt == "" {
+			fmt.Println()
+			usage()
+			return fmt.Errorf("specs file not found: %s (provide -s <file> or pass a direct prompt)", config.SpecsFile)
+		}
+	}
+
+	// If prompt file specified, check it exists
 	if config.PromptFile != "" {
-		if _, err := os.Stat(config.PromptFile); os.IsNotExist(err) {
+		if !fileExists(config.PromptFile) {
 			return fmt.Errorf("prompt file not found: %s", config.PromptFile)
 		}
 	}
@@ -359,14 +440,21 @@ func validate() error {
 
 func showConfig() {
 	logInfo("Configuration:")
+
+	if config.SpecsFile != "" {
+		fmt.Printf("  %sSpecs file:%s %s\n", colorCyan, colorReset, config.SpecsFile)
+	}
+
 	if config.PromptFile != "" {
-		fmt.Printf("  %sPrompt file:%s %s\n", colorCyan, colorReset, config.PromptFile)
-	} else {
+		fmt.Printf("  %sPrompt template file:%s %s\n", colorCyan, colorReset, config.PromptFile)
+	} else if config.Prompt != "" {
 		prompt := config.Prompt
 		if len(prompt) > 50 {
 			prompt = prompt[:50] + "..."
 		}
-		fmt.Printf("  %sPrompt:%s %s\n", colorCyan, colorReset, prompt)
+		fmt.Printf("  %sPrompt (direct):%s %s\n", colorCyan, colorReset, prompt)
+	} else {
+		fmt.Printf("  %sPrompt template:%s (built-in default)\n", colorCyan, colorReset)
 	}
 
 	if config.MaxIterations > 0 {
@@ -375,11 +463,18 @@ func showConfig() {
 		fmt.Printf("  %sMax iterations:%s unlimited\n", colorCyan, colorReset)
 	}
 
+	if config.CompletionTag != "" && config.CompletionValue != "" {
+		fmt.Printf("  %sCompletion tag:%s <%s>%s</%s>\n", colorCyan, colorReset, config.CompletionTag, config.CompletionValue, config.CompletionTag)
+	}
 	if config.CompletionPromise != "" {
-		fmt.Printf("  %sCompletion promise:%s %s\n", colorCyan, colorReset, config.CompletionPromise)
+		fmt.Printf("  %sCompletion promise (legacy):%s %s\n", colorCyan, colorReset, config.CompletionPromise)
 	}
 
 	fmt.Printf("  %sTimeout:%s %ds\n", colorCyan, colorReset, config.Timeout)
+
+	if config.NotesFile != "" {
+		fmt.Printf("  %sNotes file:%s %s\n", colorCyan, colorReset, config.NotesFile)
+	}
 
 	if len(config.AiderOpts) > 0 {
 		fmt.Printf("  %sAider options:%s %s\n", colorCyan, colorReset, strings.Join(config.AiderOpts, " "))
@@ -392,7 +487,43 @@ func showConfig() {
 	fmt.Println()
 }
 
-func getPrompt() (string, error) {
+func fileExists(path string) bool {
+	_, err := os.Stat(path)
+	return err == nil
+}
+
+func getSpecs() (string, error) {
+	if config.SpecsFile == "" {
+		return "", nil
+	}
+	data, err := os.ReadFile(config.SpecsFile)
+	if err != nil {
+		return "", err
+	}
+	return string(data), nil
+}
+
+func getNotes() (string, error) {
+	if config.NotesFile == "" {
+		return "", nil
+	}
+	data, err := os.ReadFile(config.NotesFile)
+	if err != nil {
+		if os.IsNotExist(err) {
+			return "", nil
+		}
+		return "", err
+	}
+	return string(data), nil
+}
+
+func getPromptTemplate() (string, error) {
+	// Direct prompt overrides everything
+	if config.Prompt != "" {
+		return config.Prompt, nil
+	}
+
+	// Prompt file if specified (or defaulted to PROMPT.md)
 	if config.PromptFile != "" {
 		data, err := os.ReadFile(config.PromptFile)
 		if err != nil {
@@ -400,36 +531,169 @@ func getPrompt() (string, error) {
 		}
 		return string(data), nil
 	}
-	return config.Prompt, nil
+
+	// Built-in default template
+	return defaultPromptTemplate(), nil
+}
+
+func defaultPromptTemplate() string {
+	// This template is intentionally explicit about:
+	// - reading specs each iteration
+	// - forwarding notes
+	// - using checkbox completion mechanisms
+	// - emitting a low-collision completion tag
+	return strings.TrimSpace(`
+You are running inside an iterative loop ("Ralph Wiggum technique") where your output will be fed back into the next iteration.
+
+You will be given:
+- SPECS (the current requirements; may be Markdown or JSON)
+- PRIOR_NOTES (notes from previous iterations, if any)
+
+Rules:
+1) Work in small, verifiable steps. Prefer tests and running commands.
+2) If SPECS is Markdown, track progress by checking items: "- [ ]" -> "- [x]".
+3) If SPECS is JSON, each requirement should be an object with a boolean field "completed". Update it to true when done.
+4) At the end of your response, include a short section wrapped in:
+   <ralph_notes> ... </ralph_notes>
+   containing what you want the next iteration to remember (what changed, what to do next, blockers).
+5) When ALL requirements are complete and the project is ready, output exactly:
+   <promise>COMPLETED</promise>
+   on its own line near the end of the response.
+
+Now proceed.
+`)
+}
+
+func buildIterationPrompt() (string, error) {
+	template, err := getPromptTemplate()
+	if err != nil {
+		return "", err
+	}
+
+	specs, err := getSpecs()
+	if err != nil {
+		return "", err
+	}
+
+	notes, err := getNotes()
+	if err != nil {
+		return "", err
+	}
+
+	var b strings.Builder
+	b.WriteString(template)
+	b.WriteString("\n\n")
+	if config.SpecsFile != "" {
+		b.WriteString("=== SPECS (reloaded each iteration) ===\n")
+		if specs == "" {
+			b.WriteString("(empty)\n")
+		} else {
+			b.WriteString(specs)
+			if !strings.HasSuffix(specs, "\n") {
+				b.WriteString("\n")
+			}
+		}
+		b.WriteString("=== END SPECS ===\n\n")
+	}
+
+	if notes != "" {
+		b.WriteString("=== PRIOR_NOTES (carry forward) ===\n")
+		b.WriteString(notes)
+		if !strings.HasSuffix(notes, "\n") {
+			b.WriteString("\n")
+		}
+		b.WriteString("=== END PRIOR_NOTES ===\n\n")
+	}
+
+	return b.String(), nil
 }
 
 func checkCompletion(output string) bool {
-	if config.CompletionPromise == "" {
-		return false
+	// Prefer tag-based completion (low collision)
+	if config.CompletionTag != "" && config.CompletionValue != "" {
+		tag := regexp.QuoteMeta(config.CompletionTag)
+		val := regexp.QuoteMeta(config.CompletionValue)
+		re := regexp.MustCompile(fmt.Sprintf(`(?m)^\s*<%s>\s*%s\s*</%s>\s*$`, tag, val, tag))
+		if re.FindStringIndex(output) != nil {
+			return true
+		}
 	}
-	return strings.Contains(output, config.CompletionPromise)
+
+	// Legacy substring completion
+	if config.CompletionPromise != "" {
+		return strings.Contains(output, config.CompletionPromise)
+	}
+
+	return false
+}
+
+func extractRalphNotes(output string) string {
+	// Extract the last <ralph_notes>...</ralph_notes> block if present.
+	re := regexp.MustCompile(`(?is)<ralph_notes>\s*(.*?)\s*</ralph_notes>`)
+	matches := re.FindAllStringSubmatch(output, -1)
+	if len(matches) == 0 {
+		return ""
+	}
+	last := matches[len(matches)-1]
+	if len(last) < 2 {
+		return ""
+	}
+	return strings.TrimSpace(last[1])
+}
+
+func appendNotes(iteration int, notes string) error {
+	if config.NotesFile == "" || strings.TrimSpace(notes) == "" {
+		return nil
+	}
+
+	dir := filepath.Dir(config.NotesFile)
+	if dir != "." && dir != "" {
+		if err := os.MkdirAll(dir, 0755); err != nil {
+			return err
+		}
+	}
+
+	f, err := os.OpenFile(config.NotesFile, os.O_CREATE|os.O_WRONLY|os.O_APPEND, 0644)
+	if err != nil {
+		return err
+	}
+	defer f.Close()
+
+	header := fmt.Sprintf("\n## Iteration %d (%s)\n\n", iteration, timestamp())
+	if _, err := f.WriteString(header); err != nil {
+		return err
+	}
+	if _, err := f.WriteString(notes); err != nil {
+		return err
+	}
+	if !strings.HasSuffix(notes, "\n") {
+		if _, err := f.WriteString("\n"); err != nil {
+			return err
+		}
+	}
+	return nil
 }
 
 func runIteration(iteration int, logWriter io.Writer) bool {
 	logIter(fmt.Sprintf("Iteration %d starting...", iteration))
 
-	prompt, err := getPrompt()
+	prompt, err := buildIterationPrompt()
 	if err != nil {
-		logError(fmt.Sprintf("Failed to read prompt: %v", err))
+		logError(fmt.Sprintf("Failed to build prompt: %v", err))
 		return false
 	}
 
 	if config.Verbose {
-		fmt.Printf("%s--- Prompt ---%s\n", colorCyan, colorReset)
+		fmt.Printf("%s--- Prompt (assembled) ---%s\n", colorCyan, colorReset)
 		lines := strings.Split(prompt, "\n")
 		for i, line := range lines {
-			if i >= 20 {
+			if i >= 40 {
 				fmt.Println("... (truncated)")
 				break
 			}
 			fmt.Println(line)
 		}
-		fmt.Printf("%s--------------%s\n", colorCyan, colorReset)
+		fmt.Printf("%s-------------------------%s\n", colorCyan, colorReset)
 	}
 
 	// Build aider command
@@ -483,7 +747,7 @@ func runIteration(iteration int, logWriter io.Writer) bool {
 		}
 	}
 
-	err = cmd.Wait()
+	_ = cmd.Wait()
 	output := outputBuilder.String()
 
 	// Check if killed due to timeout
@@ -497,9 +761,23 @@ func runIteration(iteration int, logWriter io.Writer) bool {
 		fmt.Fprintf(logWriter, "\n=== End of Iteration %d ===\n\n", iteration)
 	}
 
+	// Extract and persist notes for next iteration
+	notes := extractRalphNotes(output)
+	if notes != "" {
+		if err := appendNotes(iteration, notes); err != nil {
+			logWarn(fmt.Sprintf("Failed to append notes: %v", err))
+		} else if config.Verbose {
+			logInfo("Appended <ralph_notes> to notes file for next iteration")
+		}
+	}
+
 	// Check for completion
 	if checkCompletion(output) {
-		logOK(fmt.Sprintf("Completion promise '%s' detected!", config.CompletionPromise))
+		if config.CompletionTag != "" && config.CompletionValue != "" {
+			logOK(fmt.Sprintf("Completion tag '<%s>%s</%s>' detected!", config.CompletionTag, config.CompletionValue, config.CompletionTag))
+		} else {
+			logOK(fmt.Sprintf("Completion promise '%s' detected!", config.CompletionPromise))
+		}
 		return true
 	}
 
@@ -594,10 +872,11 @@ func initProject() {
 		}
 	}
 
-	specsFile := "SPECS.md"
+	specsFile := defaultSpecsFile
 	ralphDir := ".ralph"
 	configFile := filepath.Join(ralphDir, "config")
 	logsDir := filepath.Join(ralphDir, "logs")
+	notesFile := filepath.Join(ralphDir, "notes.md")
 
 	fmt.Printf("%sInitializing aider-ralph project: %s%s%s\n\n", colorCyan, colorBold, projectName, colorReset)
 
@@ -610,113 +889,30 @@ func initProject() {
 ## Project Overview
 <!-- Describe what this project does in 2-3 sentences -->
 
-
 ## Goals
 <!-- What are you trying to build? Be specific. -->
 
-1.
-2.
-3.
+- [ ] Goal 1
+- [ ] Goal 2
+- [ ] Goal 3
 
 ## Technical Requirements
 <!-- List specific technical requirements -->
 
-- [ ]
-- [ ]
-- [ ]
-
-## Architecture & Design
-<!-- Describe the high-level architecture -->
-
-
-## Implementation Phases
-<!-- Break the work into phases. Each phase should be completable in one Ralph loop session -->
-
-### Phase 1: Foundation
-<!-- Start with the basics -->
-
-**Requirements:**
-- [ ]
-- [ ]
-
-**Success Criteria:**
-- All requirements implemented
-- Tests passing
-
-**When Phase 1 is complete, output:** `+"`PHASE1_COMPLETE`"+`
-
-### Phase 2: Core Features
-<!-- Build the main functionality -->
-
-**Requirements:**
-- [ ]
-- [ ]
-
-**Success Criteria:**
-- All requirements implemented
-- Tests passing
-
-**When Phase 2 is complete, output:** `+"`PHASE2_COMPLETE`"+`
-
-### Phase 3: Polish & Testing
-<!-- Final touches -->
-
-**Requirements:**
-- [ ]
-- [ ]
-
-**Success Criteria:**
-- All requirements implemented
-- All tests passing
-- Code reviewed and clean
-
-**When Phase 3 is complete, output:** `+"`COMPLETE`"+`
-
-## Development Process
-<!-- Instructions for aider on how to work -->
-
-1. Read and understand the current phase requirements
-2. Implement one requirement at a time
-3. Write tests for each requirement
-4. Run tests after each change
-5. If tests fail, debug and fix before moving on
-6. Mark requirements as done [x] when complete
-7. Move to next phase when all requirements are complete
-
-## Commands
-<!-- Useful commands for the project -->
-
-`+"```bash"+`
-# Run tests
-npm test  # or pytest, cargo test, etc.
-
-# Start development server
-npm run dev
-
-# Build
-npm run build
-
-# Lint
-npm run lint
-`+"```"+`
+- [ ] Requirement 1
+- [ ] Requirement 2
+- [ ] Requirement 3
 
 ## Notes
-<!-- Any additional context for the AI -->
-
+<!-- Any additional context -->
 
 ---
 
 ## Completion Signal
 
-When ALL phases are complete and the project is ready:
+When ALL requirements are complete and the project is ready, output exactly:
 
-**COMPLETE**
-
-If stuck for more than 10 iterations on the same issue:
-- Document what's blocking progress
-- List attempted solutions
-- Suggest what information or help is needed
-- Output: **NEEDS_HUMAN_REVIEW**
+<promise>COMPLETED</promise>
 `, projectName)
 
 		if err := os.WriteFile(specsFile, []byte(specsContent), 0644); err != nil {
@@ -737,6 +933,18 @@ If stuck for more than 10 iterations on the same issue:
 		}
 	}
 
+	// Create notes file (empty starter)
+	if _, err := os.Stat(notesFile); err == nil {
+		fmt.Printf("%s⚠️  %s already exists. Skipping...%s\n", colorYellow, notesFile, colorReset)
+	} else {
+		_ = os.MkdirAll(filepath.Dir(notesFile), 0755)
+		if err := os.WriteFile(notesFile, []byte("# Ralph Notes\n\n"), 0644); err != nil {
+			logError(fmt.Sprintf("Failed to create %s: %v", notesFile, err))
+		} else {
+			fmt.Printf("%s✅ Created %s%s\n", colorGreen, notesFile, colorReset)
+		}
+	}
+
 	// Create config file
 	if _, err := os.Stat(configFile); err == nil {
 		fmt.Printf("%s⚠️  %s already exists. Skipping...%s\n", colorYellow, configFile, colorReset)
@@ -747,8 +955,12 @@ If stuck for more than 10 iterations on the same issue:
 # Maximum iterations before stopping (safety net)
 MAX_ITERATIONS=30
 
-# Phrase that signals completion
-COMPLETION_PROMISE=COMPLETE
+# Safer completion signal (recommended)
+COMPLETION_TAG=promise
+COMPLETION_VALUE=COMPLETED
+
+# Legacy completion substring (optional)
+# COMPLETION_PROMISE=COMPLETE
 
 # Delay between iterations in seconds
 ITERATION_DELAY=2
@@ -756,8 +968,8 @@ ITERATION_DELAY=2
 # Default specs file
 SPECS_FILE=SPECS.md
 
-# Aider model (uncomment to set default)
-# AIDER_MODEL=sonnet
+# Default notes file
+NOTES_FILE=.ralph/notes.md
 
 # Aider options (space-separated)
 # AIDER_EXTRA_OPTS=--yes
@@ -787,14 +999,15 @@ SPECS_FILE=SPECS.md
 	fmt.Printf("%sProject initialized!%s\n", colorBold, colorReset)
 	fmt.Println()
 	fmt.Printf("%sNext steps:%s\n", colorCyan, colorReset)
-	fmt.Printf("  1. Edit %sSPECS.md%s with your project requirements\n", colorBold, colorReset)
+	fmt.Printf("  1. Edit %s%s%s with your project requirements\n", colorBold, specsFile, colorReset)
 	fmt.Printf("  2. Optionally edit %s.ralph/config%s for default settings\n", colorBold, colorReset)
-	fmt.Printf("  3. Run: %saider-ralph -f SPECS.md -m 30 -c COMPLETE -- --model sonnet%s\n", colorBold, colorReset)
+	fmt.Printf("  3. Run: %saider-ralph -s %s -m 30 -- --model sonnet --yes%s\n", colorBold, specsFile, colorReset)
 	fmt.Println()
 	fmt.Printf("%sTips:%s\n", colorCyan, colorReset)
 	fmt.Println("  • Break work into small, verifiable phases")
-	fmt.Println("  • Include test commands so aider can verify its work")
-	fmt.Println("  • Use clear completion signals (PHASE1_COMPLETE, COMPLETE, etc.)")
+	fmt.Println("  • Use checkbox specs (- [ ] / - [x]) or JSON completed booleans")
+	fmt.Println("  • Use low-collision completion signals like <promise>COMPLETED</promise>")
+	fmt.Println("  • Add <ralph_notes>...</ralph_notes> to carry context forward")
 	fmt.Println("  • Set realistic max-iterations as a safety net")
 	fmt.Println()
 }

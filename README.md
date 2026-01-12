@@ -2,7 +2,7 @@
 
 The **Ralph Wiggum AI Loop Technique** for [Aider](https://aider.chat/).
 
-An iterative AI development methodology that repeatedly feeds aider a prompt until completion. Named after The Simpsons character, it embodies the philosophy of persistent iteration despite setbacks.
+An iterative AI development methodology that repeatedly runs `aider` with a prompt until completion. Named after The Simpsons character, it embodies the philosophy of persistent iteration despite setbacks.
 
 > *"I'm learnding!"* — Ralph Wiggum
 
@@ -10,7 +10,7 @@ An iterative AI development methodology that repeatedly feeds aider a prompt unt
 
 - **Iteration > Perfection**: Don't aim for perfect on first try. Let the loop refine the work.
 - **Failures Are Data**: Deterministically bad means failures are predictable and informative.
-- **Operator Skill Matters**: Success depends on writing good prompts, not just having a good model.
+- **Operator Skill Matters**: Success depends on writing good specs and prompts, not just having a good model.
 - **Persistence Wins**: Keep trying until success. The loop handles retry logic automatically.
 
 ## Installation
@@ -53,20 +53,38 @@ sudo mv aider-ralph /usr/local/bin/
 
 ## Quick Start
 
+### 1) Initialize a project (recommended)
+
 ```bash
-# Initialize a new project
 aider-ralph --init "My Todo App"
-
-# Edit SPECS.md with your requirements
-vim SPECS.md
-
-# (Optional) Create a prompt template file
-# If PROMPT.md exists, aider-ralph will use it automatically.
-vim PROMPT.md
-
-# Run the loop (defaults to SPECS.md)
-aider-ralph -m 30 -- --model sonnet
 ```
+
+This creates:
+- `SPECS.md` (your requirements; re-read every iteration)
+- `.ralph/notes.md` (notes forwarded between iterations)
+- `.ralph/logs/` (optional logs directory)
+- `.ralph/config` (informational defaults)
+
+### 2) Edit your specs
+
+```bash
+vim SPECS.md
+```
+
+Recommended formats:
+- **Markdown**: use checkboxes `- [ ]` and mark done as `- [x]`
+- **JSON**: use objects with a boolean `completed` field
+
+### 3) Run the loop
+
+```bash
+aider-ralph -m 30 -- --model sonnet --yes
+```
+
+By default, aider-ralph will:
+- Load specs from `SPECS.md` (each iteration)
+- Use `PROMPT.md` as a prompt template if it exists; otherwise use a built-in default template
+- Look for the completion signal `<promise>COMPLETED</promise>` in aider output
 
 ## Key Concepts
 
@@ -74,91 +92,95 @@ aider-ralph -m 30 -- --model sonnet
 
 By default, aider-ralph assumes your specs live in `SPECS.md` and will re-read it every iteration (so the AI can modify it and the next iteration will see the changes).
 
-You can also pass specs inline as a positional argument:
+You can specify a different specs file:
 
 ```bash
-aider-ralph "Build a REST API for todos" -m 10 -- --model sonnet
+aider-ralph -s path/to/SPECS.md -m 30 -- --model sonnet --yes
 ```
-
-Or specify a different specs file:
-
-```bash
-aider-ralph -s path/to/SPECS.md -m 30 -- --model sonnet
-```
-
-> `-f/--file` is a legacy alias for `-s/--specs`.
 
 ### Prompt template (how to work)
 
-Each iteration, aider-ralph builds the message to aider by combining:
-
+Each iteration, aider-ralph assembles the message to aider from:
 1. A **prompt template** (instructions / methodology)
-2. The **specs**
-3. Any **notes from previous iterations**
+2. The **specs** (from `SPECS.md` by default)
+3. Any **notes from previous iterations** (from `.ralph/notes.md` if present)
 
-If you do not specify a template:
-- If `PROMPT.md` exists, it is used automatically.
-- Otherwise, an internal default template is used.
-
-You can explicitly set a template file:
-
-```bash
-aider-ralph -p PROMPT.md -s SPECS.md -m 30 -- --model sonnet
-```
+Prompt template selection:
+- If you pass a direct prompt argument, it is used as-is.
+- Else if `-f/--file` is provided, that file is used as the template.
+- Else if `PROMPT.md` exists, it is used automatically.
+- Otherwise, a built-in default template is used.
 
 ### Notes forwarded between iterations
 
-aider-ralph supports forwarding context to the next iteration via a notes file (default: `.ralph/notes.md`).
+aider-ralph supports forwarding context to the next iteration via a notes file.
 
-If the model outputs a section titled **"Notes for next iteration"**, aider-ralph will append it to the notes file, and include those notes in the next iteration’s prompt.
-
-You can override the notes file path:
+- Default behavior: if `.ralph/notes.md` exists, it will be used automatically.
+- You can override the notes file path:
 
 ```bash
-aider-ralph --notes-file .ralph/my-notes.md -m 30 -- --model sonnet
+aider-ralph --notes-file .ralph/my-notes.md -m 30 -- --model sonnet --yes
 ```
+
+To write notes for the next iteration, have the model include a block like:
+
+```text
+<ralph_notes>
+- What changed
+- What to do next
+- Any blockers
+</ralph_notes>
+```
+
+aider-ralph will extract the last `<ralph_notes>...</ralph_notes>` block from aider output and append it to the notes file, then include the notes in the next iteration’s prompt.
 
 ### Completion promise (termination condition)
 
-By default, aider-ralph stops when it detects this string in aider’s output:
+By default, aider-ralph stops when it detects this exact line in aider’s output:
 
-```
+```text
 <promise>COMPLETED</promise>
 ```
 
 This is intentionally more specific than plain `COMPLETE` to reduce accidental matches.
 
-You can override it:
+You can override the tag/value:
 
 ```bash
-aider-ralph -c "<promise>DONE</promise>" -m 30 -- --model sonnet
+aider-ralph --completion-tag promise --completion-value DONE -m 30 -- --model sonnet --yes
+```
+
+Legacy option (substring match) is also supported:
+
+```bash
+aider-ralph -c "DONE" -m 30 -- --model sonnet --yes
 ```
 
 ## Usage
 
-```
+```text
 aider-ralph --init [PROJECT_NAME]
-aider-ralph [OPTIONS] "<specs>" [-- AIDER_OPTIONS]
-aider-ralph [OPTIONS] -s SPECS_FILE [-- AIDER_OPTIONS]
-aider-ralph [OPTIONS] -f SPECS_FILE [-- AIDER_OPTIONS]   (legacy alias for -s)
+aider-ralph [OPTIONS] "<prompt>" [-- AIDER_OPTIONS]
+aider-ralph [OPTIONS] -f PROMPT_FILE [-- AIDER_OPTIONS]
 ```
 
 ### Commands
 
 | Command | Description |
-|---------|-------------|
-| `--init [NAME]` | Initialize project with SPECS.md and .ralph/ directory |
+|--------|-------------|
+| `--init [NAME]` | Initialize project with `SPECS.md` and `.ralph/` directory |
 
 ### Options
 
 | Option | Description |
 |--------|-------------|
 | `-m, --max-iterations <N>` | Stop after N iterations (strongly recommended) |
-| `-c, --completion-promise <TEXT>` | Phrase that signals completion (default: `<promise>COMPLETED</promise>`) |
 | `-s, --specs <PATH>` | Specs file to load each iteration (default: `SPECS.md`) |
-| `-f, --file <PATH>` | Legacy alias for `--specs` |
-| `-p, --prompt-template <PATH>` | Prompt template file (default: `PROMPT.md` if present, else internal default) |
-| `--notes-file <PATH>` | Notes file forwarded between iterations (default: `.ralph/notes.md`) |
+| `-f, --file <PATH>` | Prompt template file (default: `PROMPT.md` if present, else built-in) |
+| `--notes-file <PATH>` | Notes file forwarded between iterations (default: `.ralph/notes.md` if present) |
+| `--completion-tag <TAG>` | Completion tag name (default: `promise`) |
+| `--completion-value <VALUE>` | Completion tag value (default: `COMPLETED`) |
+| `-c, --completion-promise <TEXT>` | Legacy completion detection (substring match) |
 | `-d, --delay <SECONDS>` | Delay between iterations (default: 2) |
 | `-t, --timeout <SECONDS>` | Timeout per iteration (default: 900 / 15min) |
 | `-l, --log <PATH>` | Log all output to file |
@@ -172,7 +194,7 @@ aider-ralph [OPTIONS] -f SPECS_FILE [-- AIDER_OPTIONS]   (legacy alias for -s)
 Any options after `--` are passed directly to aider:
 
 ```bash
-aider-ralph -s SPECS.md -m 20 -- --model sonnet --api-key anthropic=sk-xxx
+aider-ralph -s SPECS.md -m 20 -- --model sonnet --api-key anthropic=sk-xxx --yes
 ```
 
 Common aider options:
@@ -180,41 +202,6 @@ Common aider options:
 - `--api-key <PROVIDER>=<KEY>` — API key
 - `--yes` — Auto-confirm all prompts
 - `--no-git` — Disable git integration
-
-## Examples
-
-### Default (SPECS.md + PROMPT.md if present)
-
-```bash
-aider-ralph -m 30 -- --model sonnet --yes
-```
-
-### With Completion Detection Override
-
-```bash
-aider-ralph -s SPECS.md -m 30 -c "<promise>DONE</promise>" -- --model sonnet --yes
-```
-
-### Logging
-
-```bash
-aider-ralph -s SPECS.md -m 100 \
-  --log .ralph/logs/overnight-$(date +%Y%m%d).log \
-  -- --model sonnet --yes
-```
-
-## Project Initialization
-
-Running `aider-ralph --init` creates:
-
-```
-your-project/
-├── SPECS.md           # Main specs file (re-read each iteration)
-└── .ralph/
-    ├── config         # Default configuration (informational)
-    ├── logs/          # Output logs directory
-    └── notes.md       # Notes forwarded between iterations
-```
 
 ## The Basic Loop
 
