@@ -28,5 +28,5 @@ When a requirement is implemented, it should be marked complete by changing `- [
 - [x] Fix bug where it kept on looping even after all the specs were marked as done. this should be a fix to the prompt so that we do not assume (other than the prompt) the format of the specs.
 - [x] Add feature to allow a project specific RULES.md containing project specific invariants. this should be seeded by --init and include things like running the tests and linters and ensuring coverage is at least 75%
 - [x] Add a github actions workflow to build the binary for common targets; osx/arm64, osx/x86_64, linux on common architectures, windows. ideally use go's cross-compilation rather than running on multiple build agents and have this run as a release job whenever a tag is created
-- [ ] prepare the repo for a v0.0.1 release
+- [x] prepare the repo for a v0.0.1 release
 - [ ] make a v0.0.1 release pushing the tag

@@ -17,30 +17,41 @@ An iterative AI development methodology that repeatedly runs `aider` with a prom
 
 ### Download Binary (Recommended)
 
-Download the latest release for your platform from the [Releases](https://github.com/YOUR_USERNAME/aider-ralph/releases) page.
+Download the latest release for your platform from the [Releases](https://github.com/stephenc/aider-ralph/releases) page.
+
+> Note: Release assets are packaged as `.tar.gz` (macOS/Linux) or `.zip` (Windows). Download the archive, extract it, then move the binary into your PATH.
 
 ```bash
 # macOS (Apple Silicon)
-curl -L https://github.com/YOUR_USERNAME/aider-ralph/releases/latest/download/aider-ralph-darwin-arm64 -o aider-ralph
-chmod +x aider-ralph
-sudo mv aider-ralph /usr/local/bin/
+curl -L https://github.com/stephenc/aider-ralph/releases/latest/download/aider-ralph-darwin-arm64.tar.gz -o aider-ralph-darwin-arm64.tar.gz
+tar -xzf aider-ralph-darwin-arm64.tar.gz
+chmod +x aider-ralph-darwin-arm64
+sudo mv aider-ralph-darwin-arm64 /usr/local/bin/aider-ralph
 
 # macOS (Intel)
-curl -L https://github.com/YOUR_USERNAME/aider-ralph/releases/latest/download/aider-ralph-darwin-amd64 -o aider-ralph
-chmod +x aider-ralph
-sudo mv aider-ralph /usr/local/bin/
+curl -L https://github.com/stephenc/aider-ralph/releases/latest/download/aider-ralph-darwin-amd64.tar.gz -o aider-ralph-darwin-amd64.tar.gz
+tar -xzf aider-ralph-darwin-amd64.tar.gz
+chmod +x aider-ralph-darwin-amd64
+sudo mv aider-ralph-darwin-amd64 /usr/local/bin/aider-ralph
 
 # Linux (x86_64)
-curl -L https://github.com/YOUR_USERNAME/aider-ralph/releases/latest/download/aider-ralph-linux-amd64 -o aider-ralph
-chmod +x aider-ralph
-sudo mv aider-ralph /usr/local/bin/
+curl -L https://github.com/stephenc/aider-ralph/releases/latest/download/aider-ralph-linux-amd64.tar.gz -o aider-ralph-linux-amd64.tar.gz
+tar -xzf aider-ralph-linux-amd64.tar.gz
+chmod +x aider-ralph-linux-amd64
+sudo mv aider-ralph-linux-amd64 /usr/local/bin/aider-ralph
+
+# Linux (arm64)
+curl -L https://github.com/stephenc/aider-ralph/releases/latest/download/aider-ralph-linux-arm64.tar.gz -o aider-ralph-linux-arm64.tar.gz
+tar -xzf aider-ralph-linux-arm64.tar.gz
+chmod +x aider-ralph-linux-arm64
+sudo mv aider-ralph-linux-arm64 /usr/local/bin/aider-ralph
 ```
 
 ### Build from Source
 
 ```bash
-# Requires Go 1.21+
-git clone https://github.com/YOUR_USERNAME/aider-ralph.git
+# Requires Go 1.22+
+git clone https://github.com/stephenc/aider-ralph.git
 cd aider-ralph
 go build -o aider-ralph .
 sudo mv aider-ralph /usr/local/bin/
