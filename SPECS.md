@@ -31,3 +31,4 @@ When a requirement is implemented, it should be marked complete by changing `- [
 - [x] prepare the repo for a v0.0.1 release
 - [x] make a v0.0.1 release pushing the tag
 - [ ] fix the release workflow so that it uploads all the binaries not just the linux one
+- [x] default max iterations to 30 rather than unbounded, let users specify 0 to select unbounded
