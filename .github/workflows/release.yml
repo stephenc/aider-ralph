@@ -82,7 +82,7 @@ jobs:
         run: |
           set -euo pipefail
           cd dist
-          OUT="aider-ralph-${{ matrix.goos }}-${{ matrix.goarch }}${{ matrix.goarch }}${{ matrix.ext }}"
+          OUT="aider-ralph-${{ matrix.goos }}-${{ matrix.goarch }}${{ matrix.ext }}"
           zip -9 "${OUT}.zip" "${OUT}"
 
       - name: Upload packaged artifacts
