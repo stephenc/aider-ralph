@@ -62,5 +62,3 @@ When a requirement is implemented, it should be marked complete by changing `- [
 - [x] Make a v0.0.1 release pushing the tag
 - [x] Update the readme to document all the command line options
 
-### Maintenance
-- [x] Tidy up this spec so that the outdated specifications reflect current design.

@@ -43,7 +43,7 @@ Before starting work, you MUST explicitly do the following in order:
    - State it verbatim (or near-verbatim) so it’s unambiguous.
 
 ## File Modification Rules
-- **SPECS file**: ONLY modify to mark completed requirements (change `- [ ]` to `- [x]`, or set `"completed": true` in JSON)
+- **SPECS file**: ONLY modify to mark completed requirements (change `- [ ]` to `- [x]`, or set `"completed": true` in JSON).
 - **`.ralph/notes.md`**: This file is APPEND-ONLY. Never delete or modify existing content. Only add new notes at the end.
 
 ## Workflow
