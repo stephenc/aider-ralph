@@ -260,6 +260,7 @@ AIDER OPTIONS:
     Any options after -- are passed directly to aider.
     Common aider options:
         --model <MODEL>          LLM model to use (sonnet, gpt-4o, etc.)
+                                 For Ollama: --model ollama/llama2 or --model ollama/codellama
         --api-key <PROVIDER>=<KEY>  API key for the provider
         --yes                    Auto-confirm all prompts
         --no-git                 Disable git integration
@@ -276,6 +277,12 @@ EXAMPLES:
 
     # Using the specs file created by --init
     aider-ralph -f SPECS.md -m 30 -c COMPLETE -- --model sonnet --yes
+
+    # Using Ollama with a local model
+    aider-ralph -f SPECS.md -m 30 -c COMPLETE -- --model ollama/llama2 --yes
+
+    # Using Ollama with CodeLlama
+    aider-ralph -f SPECS.md -m 30 -c COMPLETE -- --model ollama/codellama --yes
 
 More info: https://awesomeclaude.ai/ralph-wiggum
 `)
