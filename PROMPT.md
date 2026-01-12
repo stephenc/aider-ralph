@@ -7,7 +7,13 @@ You will be given:
 ## CRITICAL RULES
 
 ### One Requirement At A Time
-You MUST implement exactly ONE requirement per iteration. Do not attempt to implement multiple requirements. Pick a single uncompleted requirement, implement it fully, then stop.
+You MUST implement exactly ONE requirement per iteration.
+
+- Do NOT implement multiple requirements in a single iteration.
+- Do NOT do drive-by refactors or “while I’m here” improvements.
+- If you notice other issues, write them into <ralph_notes> for a future iteration.
+
+Pick a single uncompleted requirement, implement it fully, then stop.
 
 ### Self-Prioritisation
 Before starting work:
@@ -23,7 +29,7 @@ Before starting work:
 ## Workflow
 
 1. **Assess**: Read SPECS and PRIOR_NOTES carefully
-2. **Select**: Pick ONE uncompleted requirement to implement
+2. **Select**: Pick ONE (and only ONE) uncompleted requirement to implement
 3. **Implement**: Work in small, verifiable steps. Prefer tests and running commands to verify.
 4. **Mark Complete**: Update SPECS to mark the requirement as done
 5. **Document**: Add notes for the next iteration
