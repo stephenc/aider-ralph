@@ -34,5 +34,5 @@ When a requirement is implemented, it should be marked complete by changing `- [
 - [x] default max iterations to 30 rather than unbounded, let users specify 0 to select unbounded
 - [x] update the readme to document all the command line options
 - [x] Change `RULES.md` to `CONVENTIONS.md` i.e. seed the conventions if not already present and update the docs to detail conventions rather than rules. assume projects we are working on have handled the transition themselves.
-- [x] Tidy up this spec so that the outdated specifications reflect current design. FOR THIS TASK AND ONLY THIS TASK YOU ARE EXPRESSLY REQUIRED TO MODIFY THIS FILE EVEN THOUGH MY RULES WOULD NORMALLY PREVENT IT.
+- [ ] Tidy up this spec so that the outdated specifications reflect current design. FOR THIS TASK AND ONLY THIS TASK YOU ARE EXPRESSLY REQUIRED TO MODIFY THIS FILE EVEN THOUGH MY RULES WOULD NORMALLY PREVENT IT.
 - [x] The initial seed content for `CONVENTIONS.md` should come from a `templates/CONVENTIONS.md` file in our project that is injected via go's embed mechanism
