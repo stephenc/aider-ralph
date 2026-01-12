@@ -10,7 +10,7 @@ An iterative AI development methodology that repeatedly feeds aider a prompt unt
 - [ ] Allow externalisation of the specs into a separate specs file so that a more standard prompt can be used
 - [ ] Update the instructions to allow and encourage forwarding notes to the next iteration
 - [ ] Use a sensible default prompt template if none provided. in fact all options should have sensible defaults and the specs file should be assumed. showing help if no specs file or specs file not specified on the cli. The prompt template will use PROMPT.md if that file is present and there is no override.
-- [ ] aider-ralph should always rescan files that it loads every iteration so that self-modification is permitted.
+- [x] aider-ralph should always rescan files that it loads every iteration so that self-modification is permitted.
 - [ ] we should encourage the specs file to have a completion mechanism, if json formatted then each spec is an object with a completed boolean, if markdown then use a `- [ ] ` style list with the checkbox being checked after each one is implemented. Where necessary update the specs file to follow such a format.
 - [ ] the default prompt template should encourage self-prioritisation of the task to work on and identification of any requirements that are already met
 - [ ] the default prompt must make it absolutely clear that one and only one requirement is to be implemented at a time
