@@ -94,8 +94,8 @@ aider-ralph -m 30 -- --model sonnet --yes
 
 By default, aider-ralph will:
 - Load specs from `SPECS.md` (each iteration)
-- Use `PROMPT.md` as a prompt template if it exists; otherwise use a built-in default template
-- Look for the completion signal `<promise>COMPLETED</promise>` in aider output
+- Use `PROMPT.md` as a prompt template if it exists; otherwise use a built-in default template embedded in the binary
+- Look for the completion signal `<ralph_status>COMPLETED</ralph_status>` in aider output
 
 ## Key Concepts
 
@@ -120,7 +120,7 @@ Prompt template selection:
 - If you pass a direct prompt argument, it is used as-is.
 - Else if `-f/--file` is provided, that file is used as the template.
 - Else if `PROMPT.md` exists, it is used automatically.
-- Otherwise, a built-in default template is used.
+- Otherwise, a built-in default template (embedded in the binary) is used.
 
 ### Notes forwarded between iterations
 
@@ -147,13 +147,15 @@ aider-ralph will extract the last `<ralph_notes>...</ralph_notes>` block from ai
 
 ### Completion promise (termination condition)
 
-By default, aider-ralph stops when it detects this exact line in aider’s output:
+By default, aider-ralph stops when it detects this XML-like completion tag in aider’s output:
 
 ```text
-<promise>COMPLETED</promise>
+<ralph_status>
+COMPLETED
+</ralph_status>
 ```
 
-This is intentionally more specific than plain `COMPLETE` to reduce accidental matches.
+This is intentionally more specific than plain `COMPLETED` to reduce accidental matches.
 
 You can override the tag/value:
 
@@ -185,11 +187,11 @@ aider-ralph [OPTIONS] -f PROMPT_FILE [-- AIDER_OPTIONS]
 
 | Option | Description |
 |--------|-------------|
-| `-m, --max-iterations <N>` | Stop after N iterations (strongly recommended) |
+| `-m, --max-iterations <N>` | Stop after N iterations (default: 30). Set to `0` for unlimited (not recommended). |
 | `-s, --specs <PATH>` | Specs file to load each iteration (default: `SPECS.md`) |
-| `-f, --file <PATH>` | Prompt template file (default: `PROMPT.md` if present, else built-in) |
+| `-f, --file <PATH>` | Prompt template file (default: `PROMPT.md` if present, else embedded template) |
 | `--notes-file <PATH>` | Notes file forwarded between iterations (default: `.ralph/notes.md` if present) |
-| `--completion-tag <TAG>` | Completion tag name (default: `promise`) |
+| `--completion-tag <TAG>` | Completion tag name (default: `ralph_status`) |
 | `--completion-value <VALUE>` | Completion tag value (default: `COMPLETED`) |
 | `-c, --completion-promise <TEXT>` | Legacy completion detection (substring match) |
 | `-d, --delay <SECONDS>` | Delay between iterations (default: 2) |
@@ -198,7 +200,7 @@ aider-ralph [OPTIONS] -f PROMPT_FILE [-- AIDER_OPTIONS]
 | `-v, --verbose` | Show detailed progress information |
 | `--dry-run` | Show what would be executed without running |
 | `--version` | Show version information |
-| `-h` | Show help message |
+| `-h, --help` | Show help message |
 
 ### Aider Options
 
@@ -225,11 +227,11 @@ while :; do aider --message "$(cat PROMPT.md)" --yes; done
 The Go binary adds:
 - **Iteration limits** — Safety net with `-m` flag
 - **Timeout protection** — Kills hung processes (default 15min)
-- **Completion detection** — Auto-stop when promise is detected
+- **Completion detection** — Auto-stop when completion is detected
 - **Logging** — Full output capture for review
 - **Notes forwarding** — Carry context between iterations
 - **Rescanning** — Re-reads template/specs/notes every iteration
-- **Cross-platform** — Single binary for macOS/Linux
+- **Cross-platform** — Single binary for macOS/Linux/Windows
 
 ## Resources
 
