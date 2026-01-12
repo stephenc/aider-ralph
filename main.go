@@ -71,6 +71,7 @@ const defaultSpecsFile = "SPECS.md"
 const defaultPromptFile = "PROMPT.md"
 const defaultCompletionTag = "promise"
 const defaultCompletionValue = "COMPLETED"
+const defaultMaxIterations = 30
 
 func main() {
 	parseArgs()
@@ -110,6 +111,7 @@ func parseArgs() {
 	config.SpecsFile = defaultSpecsFile
 	config.CompletionTag = defaultCompletionTag
 	config.CompletionValue = defaultCompletionValue
+	config.MaxIterations = defaultMaxIterations
 
 	// First, find and extract aider options after --
 	for i, arg := range args {
@@ -292,8 +294,8 @@ COMMON (RECOMMENDED):
     aider-ralph -s SPECS.md -m 30 -- --model sonnet --yes
 
 OPTIONS:
-    -m, --max-iterations <N>     Stop after N iterations (default: unlimited)
-                                 STRONGLY RECOMMENDED as a safety net
+    -m, --max-iterations <N>     Stop after N iterations (default: 30)
+                                 Set to 0 for unlimited (not recommended)
 
     -s, --specs <PATH>           Specs file to load each iteration (default: SPECS.md)
                                  If missing and no prompt is provided, help is shown.
@@ -339,6 +341,9 @@ EXAMPLES:
 
     # Use default SPECS.md and PROMPT.md (if present)
     aider-ralph -m 30 -- --model sonnet --yes
+
+    # Unlimited iterations (not recommended)
+    aider-ralph -m 0 -- --model sonnet --yes
 
     # Explicit specs and completion tag
     aider-ralph -s SPECS.md -m 30 --completion-tag promise --completion-value COMPLETED -- --model sonnet --yes
@@ -432,9 +437,9 @@ func validate() error {
 		}
 	}
 
-	// Warn if no max iterations
+	// Warn if user explicitly selected unlimited iterations
 	if config.MaxIterations == 0 {
-		logWarn("No --max-iterations set. Loop will run indefinitely!")
+		logWarn("Max iterations set to 0 (unlimited). Loop will run indefinitely!")
 		logWarn("Press Ctrl+C to stop, or set -m for safety")
 		fmt.Println()
 	}
