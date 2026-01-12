@@ -3,6 +3,7 @@ package main
 import (
 	"bufio"
 	"context"
+	_ "embed"
 	"fmt"
 	"io"
 	"os"
@@ -21,6 +22,9 @@ var (
 	commit  = "none"
 	date    = "unknown"
 )
+
+//go:embed PROMPT.md
+var embeddedPromptTemplate string
 
 // ANSI color codes
 const (
@@ -537,31 +541,8 @@ func getPromptTemplate() (string, error) {
 }
 
 func defaultPromptTemplate() string {
-	// This template is intentionally explicit about:
-	// - reading specs each iteration
-	// - forwarding notes
-	// - using checkbox completion mechanisms
-	// - emitting a low-collision completion tag
-	return strings.TrimSpace(`
-You are running inside an iterative loop ("Ralph Wiggum technique") where your output will be fed back into the next iteration.
-
-You will be given:
-- SPECS (the current requirements; may be Markdown or JSON)
-- PRIOR_NOTES (notes from previous iterations, if any)
-
-Rules:
-1) Work in small, verifiable steps. Prefer tests and running commands.
-2) If SPECS is Markdown, track progress by checking items: "- [ ]" -> "- [x]".
-3) If SPECS is JSON, each requirement should be an object with a boolean field "completed". Update it to true when done.
-4) At the end of your response, include a short section wrapped in:
-   <ralph_notes> ... </ralph_notes>
-   containing what you want the next iteration to remember (what changed, what to do next, blockers).
-5) When ALL requirements are complete and the project is ready, output exactly:
-   <promise>COMPLETED</promise>
-   on its own line near the end of the response.
-
-Now proceed.
-`)
+	// Uses the embedded PROMPT.md from the repository root
+	return strings.TrimSpace(embeddedPromptTemplate)
 }
 
 func buildIterationPrompt() (string, error) {
