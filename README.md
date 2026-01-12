@@ -60,16 +60,87 @@ aider-ralph --init "My Todo App"
 # Edit SPECS.md with your requirements
 vim SPECS.md
 
-# Run the loop
-aider-ralph -f SPECS.md -m 30 -c "COMPLETE" -- --model sonnet
+# (Optional) Create a prompt template file
+# If PROMPT.md exists, aider-ralph will use it automatically.
+vim PROMPT.md
+
+# Run the loop (defaults to SPECS.md)
+aider-ralph -m 30 -- --model sonnet
+```
+
+## Key Concepts
+
+### Specs (what to build)
+
+By default, aider-ralph assumes your specs live in `SPECS.md` and will re-read it every iteration (so the AI can modify it and the next iteration will see the changes).
+
+You can also pass specs inline as a positional argument:
+
+```bash
+aider-ralph "Build a REST API for todos" -m 10 -- --model sonnet
+```
+
+Or specify a different specs file:
+
+```bash
+aider-ralph -s path/to/SPECS.md -m 30 -- --model sonnet
+```
+
+> `-f/--file` is a legacy alias for `-s/--specs`.
+
+### Prompt template (how to work)
+
+Each iteration, aider-ralph builds the message to aider by combining:
+
+1. A **prompt template** (instructions / methodology)
+2. The **specs**
+3. Any **notes from previous iterations**
+
+If you do not specify a template:
+- If `PROMPT.md` exists, it is used automatically.
+- Otherwise, an internal default template is used.
+
+You can explicitly set a template file:
+
+```bash
+aider-ralph -p PROMPT.md -s SPECS.md -m 30 -- --model sonnet
+```
+
+### Notes forwarded between iterations
+
+aider-ralph supports forwarding context to the next iteration via a notes file (default: `.ralph/notes.md`).
+
+If the model outputs a section titled **"Notes for next iteration"**, aider-ralph will append it to the notes file, and include those notes in the next iteration’s prompt.
+
+You can override the notes file path:
+
+```bash
+aider-ralph --notes-file .ralph/my-notes.md -m 30 -- --model sonnet
+```
+
+### Completion promise (termination condition)
+
+By default, aider-ralph stops when it detects this string in aider’s output:
+
+```
+<promise>COMPLETED</promise>
+```
+
+This is intentionally more specific than plain `COMPLETE` to reduce accidental matches.
+
+You can override it:
+
+```bash
+aider-ralph -c "<promise>DONE</promise>" -m 30 -- --model sonnet
 ```
 
 ## Usage
 
 ```
 aider-ralph --init [PROJECT_NAME]
-aider-ralph [OPTIONS] "<prompt>" [-- AIDER_OPTIONS]
-aider-ralph [OPTIONS] -f PROMPT_FILE [-- AIDER_OPTIONS]
+aider-ralph [OPTIONS] "<specs>" [-- AIDER_OPTIONS]
+aider-ralph [OPTIONS] -s SPECS_FILE [-- AIDER_OPTIONS]
+aider-ralph [OPTIONS] -f SPECS_FILE [-- AIDER_OPTIONS]   (legacy alias for -s)
 ```
 
 ### Commands
@@ -83,8 +154,11 @@ aider-ralph [OPTIONS] -f PROMPT_FILE [-- AIDER_OPTIONS]
 | Option | Description |
 |--------|-------------|
 | `-m, --max-iterations <N>` | Stop after N iterations (strongly recommended) |
-| `-c, --completion-promise <TEXT>` | Phrase that signals completion (e.g., "DONE") |
-| `-f, --file <PATH>` | Read prompt from file (re-read each iteration) |
+| `-c, --completion-promise <TEXT>` | Phrase that signals completion (default: `<promise>COMPLETED</promise>`) |
+| `-s, --specs <PATH>` | Specs file to load each iteration (default: `SPECS.md`) |
+| `-f, --file <PATH>` | Legacy alias for `--specs` |
+| `-p, --prompt-template <PATH>` | Prompt template file (default: `PROMPT.md` if present, else internal default) |
+| `--notes-file <PATH>` | Notes file forwarded between iterations (default: `.ralph/notes.md`) |
 | `-d, --delay <SECONDS>` | Delay between iterations (default: 2) |
 | `-t, --timeout <SECONDS>` | Timeout per iteration (default: 900 / 15min) |
 | `-l, --log <PATH>` | Log all output to file |
@@ -98,7 +172,7 @@ aider-ralph [OPTIONS] -f PROMPT_FILE [-- AIDER_OPTIONS]
 Any options after `--` are passed directly to aider:
 
 ```bash
-aider-ralph "Build an API" -m 20 -- --model sonnet --api-key anthropic=sk-xxx
+aider-ralph -s SPECS.md -m 20 -- --model sonnet --api-key anthropic=sk-xxx
 ```
 
 Common aider options:
@@ -109,42 +183,24 @@ Common aider options:
 
 ## Examples
 
-### Simple Loop
+### Default (SPECS.md + PROMPT.md if present)
 
 ```bash
-aider-ralph "Build a REST API for todos" --max-iterations 10
+aider-ralph -m 30 -- --model sonnet --yes
 ```
 
-### With Completion Detection
+### With Completion Detection Override
 
 ```bash
-aider-ralph "Implement user auth. Output DONE when complete." \
-    --completion-promise "DONE" \
-    --max-iterations 20
+aider-ralph -s SPECS.md -m 30 -c "<promise>DONE</promise>" -- --model sonnet --yes
 ```
 
-### Using a Specs File
+### Logging
 
 ```bash
-aider-ralph -f SPECS.md -m 30 -c "COMPLETE" -- --model sonnet --yes
-```
-
-### TDD Development Loop
-
-```bash
-aider-ralph -f tdd-prompt.md \
-    --max-iterations 50 \
-    --completion-promise "ALL_TESTS_PASS" \
-    -- --model gpt-4o
-```
-
-### Overnight Batch Processing
-
-```bash
-# Run before bed
-aider-ralph -f SPECS.md -m 100 -c "COMPLETE" \
-    --log .ralph/logs/overnight-$(date +%Y%m%d).log \
-    -- --model sonnet --yes
+aider-ralph -s SPECS.md -m 100 \
+  --log .ralph/logs/overnight-$(date +%Y%m%d).log \
+  -- --model sonnet --yes
 ```
 
 ## Project Initialization
@@ -153,108 +209,16 @@ Running `aider-ralph --init` creates:
 
 ```
 your-project/
-├── SPECS.md           # Main specs/prompt file
+├── SPECS.md           # Main specs file (re-read each iteration)
 └── .ralph/
-    ├── config         # Default configuration
-    └── logs/          # Output logs directory
-```
-
-### SPECS.md Template
-
-The generated SPECS.md includes:
-
-- **Project Overview** — What the project does
-- **Goals** — Numbered list of objectives
-- **Technical Requirements** — Checkbox list
-- **Implementation Phases** — Broken into completable chunks with signals
-- **Development Process** — Instructions for the AI
-- **Commands** — Test/build/lint commands
-- **Completion Signals** — Clear markers per phase
-
-### Configuration
-
-Edit `.ralph/config` to set defaults:
-
-```bash
-# Maximum iterations before stopping
-MAX_ITERATIONS=30
-
-# Phrase that signals completion
-COMPLETION_PROMISE=COMPLETE
-
-# Delay between iterations in seconds
-ITERATION_DELAY=2
-
-# Default specs file
-SPECS_FILE=SPECS.md
-
-# Aider model (uncomment to set)
-# AIDER_MODEL=sonnet
-```
-
-## Writing Good Prompts
-
-### 1. Clear Completion Criteria
-
-```markdown
-## Bad
-Build a todo API and make it good.
-
-## Good
-Build a REST API for todos. When complete:
-- All CRUD endpoints working
-- Input validation in place
-- Tests passing (coverage > 80%)
-- README with API docs
-
-Output: **COMPLETE**
-```
-
-### 2. Incremental Goals
-
-```markdown
-## Bad
-Create a complete e-commerce platform.
-
-## Good
-Phase 1: User authentication (JWT, tests)
-Phase 2: Product catalog (list/search, tests)
-Phase 3: Shopping cart (add/remove, tests)
-
-Output **COMPLETE** when all phases done.
-```
-
-### 3. Self-Correction Pattern
-
-```markdown
-## Bad
-Write code for feature X.
-
-## Good
-Implement feature X following TDD:
-1. Write failing tests
-2. Implement feature
-3. Run tests
-4. If any fail, debug and fix
-5. Refactor if needed
-6. Repeat until all green
-7. Output: **COMPLETE**
-```
-
-### 4. Escape Hatches
-
-Always include what to do if stuck:
-
-```markdown
-If stuck for more than 10 iterations:
-- Document what's blocking progress
-- List attempted solutions
-- Output: **NEEDS_HUMAN_REVIEW**
+    ├── config         # Default configuration (informational)
+    ├── logs/          # Output logs directory
+    └── notes.md       # Notes forwarded between iterations
 ```
 
 ## The Basic Loop
 
-At its core, aider-ralph implements this simple loop concept:
+At its core, aider-ralph implements this loop concept:
 
 ```bash
 while :; do aider --message "$(cat PROMPT.md)" --yes; done
@@ -263,18 +227,11 @@ while :; do aider --message "$(cat PROMPT.md)" --yes; done
 The Go binary adds:
 - **Iteration limits** — Safety net with `-m` flag
 - **Timeout protection** — Kills hung processes (default 15min)
-- **Completion detection** — Auto-stop when task is done
+- **Completion detection** — Auto-stop when promise is detected
 - **Logging** — Full output capture for review
-- **Progress display** — Visual iteration tracking
+- **Notes forwarding** — Carry context between iterations
+- **Rescanning** — Re-reads template/specs/notes every iteration
 - **Cross-platform** — Single binary for macOS/Linux
-
-## Real-World Results
-
-The Ralph Wiggum technique has been used to:
-
-- Generate **6 repositories overnight** at Y Combinator hackathon
-- Complete a **$50k contract for $297** in API costs
-- Create an entire **programming language (CURSED)** over 3 months
 
 ## Resources
 

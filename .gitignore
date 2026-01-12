@@ -1,2 +1,8 @@
 .aider*
 aider-ralph
+
+# aider-ralph logs
+.ralph/logs/
+
+# aider-ralph iteration notes
+.ralph/notes.md
