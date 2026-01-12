@@ -1,0 +1,95 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - "v*"
+
+permissions:
+  contents: write
+
+jobs:
+  build-and-release:
+    name: Build and publish release assets
+    runs-on: ubuntu-latest
+
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - goos: darwin
+            goarch: arm64
+            ext: ""
+            archive: tar.gz
+          - goos: darwin
+            goarch: amd64
+            ext: ""
+            archive: tar.gz
+          - goos: linux
+            goarch: amd64
+            ext: ""
+            archive: tar.gz
+          - goos: linux
+            goarch: arm64
+            ext: ""
+            archive: tar.gz
+          - goos: windows
+            goarch: amd64
+            ext: ".exe"
+            archive: zip
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Go
+        uses: actions/setup-go@v5
+        with:
+          go-version-file: go.mod
+          cache: true
+
+      - name: Build
+        env:
+          GOOS: ${{ matrix.goos }}
+          GOARCH: ${{ matrix.goarch }}
+          CGO_ENABLED: "0"
+        run: |
+          set -euo pipefail
+          mkdir -p dist
+
+          VERSION="${GITHUB_REF_NAME}"
+          COMMIT="${GITHUB_SHA}"
+          DATE="$(date -u +'%Y-%m-%dT%H:%M:%SZ')"
+
+          OUT="aider-ralph-${{ matrix.goos }}-${{ matrix.goarch }}${{ matrix.ext }}"
+
+          go build \
+            -trimpath \
+            -ldflags "-s -w -X main.version=${VERSION} -X main.commit=${COMMIT} -X main.date=${DATE}" \
+            -o "dist/${OUT}" \
+            .
+
+      - name: Package (tar.gz)
+        if: ${{ matrix.archive == 'tar.gz' }}
+        run: |
+          set -euo pipefail
+          cd dist
+          OUT="aider-ralph-${{ matrix.goos }}-${{ matrix.goarch }}${{ matrix.ext }}"
+          tar -czf "${OUT}.tar.gz" "${OUT}"
+
+      - name: Package (zip)
+        if: ${{ matrix.archive == 'zip' }}
+        run: |
+          set -euo pipefail
+          cd dist
+          OUT="aider-ralph-${{ matrix.goos }}-${{ matrix.goarch }}${{ matrix.ext }}"
+          zip -9 "${OUT}.zip" "${OUT}"
+
+      - name: Create GitHub Release
+        if: ${{ matrix.goos == 'linux' && matrix.goarch == 'amd64' }}
+        uses: softprops/action-gh-release@v2
+        with:
+          generate_release_notes: true
+          files: |
+            dist/*.tar.gz
+            dist/*.zip
