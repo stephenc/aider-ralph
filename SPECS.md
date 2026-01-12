@@ -35,4 +35,4 @@ When a requirement is implemented, it should be marked complete by changing `- [
 - [x] update the readme to document all the command line options
 - [x] Change `RULES.md` to `CONVENTIONS.md` i.e. seed the conventions if not already present and update the docs to detail conventions rather than rules. assume projects we are working on have handled the transition themselves.
 - [ ] Tidy up this spec so that the outdated specifications reflect current design
-- [ ] The initial seed content for `CONVENTIONS.md` should come from a `templates/CONVENTIONS.md` file in our project that is injected via go's embed mechanism
+- [x] The initial seed content for `CONVENTIONS.md` should come from a `templates/CONVENTIONS.md` file in our project that is injected via go's embed mechanism
