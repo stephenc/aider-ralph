@@ -868,6 +868,7 @@ func initProject() {
 	configFile := filepath.Join(ralphDir, "config")
 	logsDir := filepath.Join(ralphDir, "logs")
 	notesFile := filepath.Join(ralphDir, "notes.md")
+	conventionsFile := "CONVENTIONS.md"
 
 	fmt.Printf("%sInitializing aider-ralph project: %s%s%s\n\n", colorCyan, colorBold, projectName, colorReset)
 
@@ -938,6 +939,33 @@ COMPLETED
 		}
 	}
 
+	// Create CONVENTIONS.md (project-specific invariants/conventions)
+	if _, err := os.Stat(conventionsFile); err == nil {
+		fmt.Printf("%s⚠️  %s already exists. Skipping...%s\n", colorYellow, conventionsFile, colorReset)
+	} else {
+		conventionsContent := fmt.Sprintf(`# %s Conventions
+
+This file contains project-specific conventions and invariants that MUST be followed.
+
+## Quality Bar
+- Run tests and linters before considering work complete.
+- Ensure coverage is at least 75%% (if the project has coverage tooling).
+
+## Workflow
+- Prefer small, verifiable changes.
+- Update SPECS checkboxes as requirements are completed.
+
+## Notes
+- Add any additional project-specific rules/conventions here.
+`, projectName)
+
+		if err := os.WriteFile(conventionsFile, []byte(conventionsContent), 0644); err != nil {
+			logError(fmt.Sprintf("Failed to create %s: %v", conventionsFile, err))
+		} else {
+			fmt.Printf("%s✅ Created %s%s\n", colorGreen, conventionsFile, colorReset)
+		}
+	}
+
 	// Create config file
 	if _, err := os.Stat(configFile); err == nil {
 		fmt.Printf("%s⚠️  %s already exists. Skipping...%s\n", colorYellow, configFile, colorReset)
@@ -993,8 +1021,9 @@ NOTES_FILE=.ralph/notes.md
 	fmt.Println()
 	fmt.Printf("%sNext steps:%s\n", colorCyan, colorReset)
 	fmt.Printf("  1. Edit %s%s%s with your project requirements\n", colorBold, specsFile, colorReset)
-	fmt.Printf("  2. Optionally edit %s.ralph/config%s for default settings\n", colorBold, colorReset)
-	fmt.Printf("  3. Run: %saider-ralph -s %s -m 30 -- --model sonnet --yes%s\n", colorBold, specsFile, colorReset)
+	fmt.Printf("  2. Optionally edit %s%s%s for project-specific conventions\n", colorBold, conventionsFile, colorReset)
+	fmt.Printf("  3. Optionally edit %s.ralph/config%s for default settings\n", colorBold, colorReset)
+	fmt.Printf("  4. Run: %saider-ralph -s %s -m 30 -- --model sonnet --yes%s\n", colorBold, specsFile, colorReset)
 	fmt.Println()
 	fmt.Printf("%sTips:%s\n", colorCyan, colorReset)
 	fmt.Println("  • Break work into small, verifiable phases")

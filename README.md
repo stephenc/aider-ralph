@@ -75,6 +75,7 @@ This creates:
 - `.ralph/notes.md` (notes forwarded between iterations)
 - `.ralph/logs/` (optional logs directory)
 - `.ralph/config` (informational defaults)
+- `CONVENTIONS.md` (project-specific conventions/invariants, e.g. tests/linters/coverage expectations)
 
 ### 2) Edit your specs
 
@@ -144,6 +145,12 @@ To write notes for the next iteration, have the model include a block like:
 ```
 
 aider-ralph will extract the last `<ralph_notes>...</ralph_notes>` block from aider output and append it to the notes file, then include the notes in the next iteration’s prompt.
+
+### Conventions (project invariants)
+
+Projects can optionally include a `CONVENTIONS.md` file containing project-specific conventions/invariants (for example: “run tests”, “run linters”, “keep coverage above 75%”, etc.).
+
+When present, the model should follow `CONVENTIONS.md` strictly.
 
 ### Completion promise (termination condition)
 
