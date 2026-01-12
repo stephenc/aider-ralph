@@ -15,21 +15,39 @@ An iterative AI development methodology that repeatedly feeds aider a prompt unt
 
 ## Installation
 
+### Download Binary (Recommended)
+
+Download the latest release for your platform from the [Releases](https://github.com/YOUR_USERNAME/aider-ralph/releases) page.
+
 ```bash
-# Clone the repo
+# macOS (Apple Silicon)
+curl -L https://github.com/YOUR_USERNAME/aider-ralph/releases/latest/download/aider-ralph-darwin-arm64 -o aider-ralph
+chmod +x aider-ralph
+sudo mv aider-ralph /usr/local/bin/
+
+# macOS (Intel)
+curl -L https://github.com/YOUR_USERNAME/aider-ralph/releases/latest/download/aider-ralph-darwin-amd64 -o aider-ralph
+chmod +x aider-ralph
+sudo mv aider-ralph /usr/local/bin/
+
+# Linux (x86_64)
+curl -L https://github.com/YOUR_USERNAME/aider-ralph/releases/latest/download/aider-ralph-linux-amd64 -o aider-ralph
+chmod +x aider-ralph
+sudo mv aider-ralph /usr/local/bin/
+```
+
+### Build from Source
+
+```bash
+# Requires Go 1.21+
 git clone https://github.com/YOUR_USERNAME/aider-ralph.git
 cd aider-ralph
-
-# Make executable
-chmod +x aider-ralph
-
-# Optionally, add to PATH
-ln -s "$(pwd)/aider-ralph" /usr/local/bin/aider-ralph
+go build -o aider-ralph .
+sudo mv aider-ralph /usr/local/bin/
 ```
 
 ### Requirements
 
-- Bash 4.0+
 - [Aider](https://aider.chat/) installed (`pip install aider-chat`)
 - An API key for your preferred LLM provider
 
@@ -68,10 +86,12 @@ aider-ralph [OPTIONS] -f PROMPT_FILE [-- AIDER_OPTIONS]
 | `-c, --completion-promise <TEXT>` | Phrase that signals completion (e.g., "DONE") |
 | `-f, --file <PATH>` | Read prompt from file (re-read each iteration) |
 | `-d, --delay <SECONDS>` | Delay between iterations (default: 2) |
+| `-t, --timeout <SECONDS>` | Timeout per iteration (default: 900 / 15min) |
 | `-l, --log <PATH>` | Log all output to file |
 | `-v, --verbose` | Show detailed progress information |
 | `--dry-run` | Show what would be executed without running |
-| `-h, --help` | Show help message |
+| `--version` | Show version information |
+| `-h` | Show help message |
 
 ### Aider Options
 
@@ -234,17 +254,19 @@ If stuck for more than 10 iterations:
 
 ## The Basic Loop
 
-At its core, aider-ralph is just a wrapper around this simple bash loop:
+At its core, aider-ralph implements this simple loop concept:
 
 ```bash
 while :; do aider --message "$(cat PROMPT.md)" --yes; done
 ```
 
-The tool adds:
-- Iteration limits for safety
-- Completion detection
-- Logging and progress display
-- Configuration management
+The Go binary adds:
+- **Iteration limits** — Safety net with `-m` flag
+- **Timeout protection** — Kills hung processes (default 15min)
+- **Completion detection** — Auto-stop when task is done
+- **Logging** — Full output capture for review
+- **Progress display** — Visual iteration tracking
+- **Cross-platform** — Single binary for macOS/Linux
 
 ## Real-World Results
 
