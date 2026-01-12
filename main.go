@@ -69,7 +69,7 @@ var loopActive bool
 
 const defaultSpecsFile = "SPECS.md"
 const defaultPromptFile = "PROMPT.md"
-const defaultCompletionTag = "promise"
+const defaultCompletionTag = "ralph_status"
 const defaultCompletionValue = "COMPLETED"
 const defaultMaxIterations = 30
 
@@ -308,11 +308,11 @@ OPTIONS:
                                  Legacy completion detection: substring match in output
 
     --completion-tag <TAG>       Safer completion detection using an XML-like tag
-                                 default: promise
+                                 default: ralph_status
 
     --completion-value <VALUE>   Value inside the completion tag
                                  default: COMPLETED
-                                 Example: <promise>COMPLETED</promise>
+                                 Example: <ralph_status>COMPLETED</ralph_status>
 
     --notes-file <PATH>          File to store iteration notes and feed into next iteration
                                  If not set, .ralph/notes.md is used if it exists.
@@ -599,7 +599,12 @@ func checkCompletion(output string) bool {
 	if config.CompletionTag != "" && config.CompletionValue != "" {
 		tag := regexp.QuoteMeta(config.CompletionTag)
 		val := regexp.QuoteMeta(config.CompletionValue)
-		re := regexp.MustCompile(fmt.Sprintf(`(?m)^\s*<%s>\s*%s\s*</%s>\s*$`, tag, val, tag))
+		// Match multi-line format:
+		// <ralph_status>
+		// COMPLETED
+		// </ralph_status>
+		// Also matches single-line: <ralph_status>COMPLETED</ralph_status>
+		re := regexp.MustCompile(fmt.Sprintf(`(?s)<%s>\s*%s\s*</%s>`, tag, val, tag))
 		if re.FindStringIndex(output) != nil {
 			return true
 		}
@@ -898,7 +903,9 @@ func initProject() {
 
 When ALL requirements are complete and the project is ready, output exactly:
 
-<promise>COMPLETED</promise>
+<ralph_status>
+COMPLETED
+</ralph_status>
 `, projectName)
 
 		if err := os.WriteFile(specsFile, []byte(specsContent), 0644); err != nil {
@@ -992,7 +999,7 @@ NOTES_FILE=.ralph/notes.md
 	fmt.Printf("%sTips:%s\n", colorCyan, colorReset)
 	fmt.Println("  • Break work into small, verifiable phases")
 	fmt.Println("  • Use checkbox specs (- [ ] / - [x]) or JSON completed booleans")
-	fmt.Println("  • Use low-collision completion signals like <promise>COMPLETED</promise>")
+	fmt.Println("  • Use low-collision completion signals like <ralph_status>COMPLETED</ralph_status>")
 	fmt.Println("  • Add <ralph_notes>...</ralph_notes> to carry context forward")
 	fmt.Println("  • Set realistic max-iterations as a safety net")
 	fmt.Println()

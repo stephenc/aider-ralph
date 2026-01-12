@@ -26,8 +26,13 @@ Before starting work, you MUST explicitly do the following in order:
    - List them clearly so it’s obvious what is left.
 
 3. **If there are NO remaining uncompleted requirements**
-   - You MUST output the completion signal exactly:
-     <promise>COMPLETED</promise>
+   - You MUST output the completion signal using XML tags exactly as shown:
+     ```
+     <ralph_status>
+     COMPLETED
+     </ralph_status>
+     ```
+   - **CRITICAL**: The `<ralph_status>` and `</ralph_status>` tags are REQUIRED — just like you use `<ralph_notes>` tags, you MUST use `<ralph_status>` tags for completion.
    - Then STOP. Do not propose further work, and do not continue the loop.
 
 4. **Choose the highest priority uncompleted requirement**
@@ -68,11 +73,29 @@ These notes will be appended to `.ralph/notes.md` and fed into the next iteratio
 
 ## Final Completion
 
-When ALL requirements are complete and the project is fully ready, output exactly:
+When ALL requirements are complete and the project is fully ready, you MUST output the completion signal with XML tags (just like you use `<ralph_notes>` tags):
 
-<promise>COMPLETED</promise>
+```
+<ralph_status>
+COMPLETED
+</ralph_status>
+```
 
-on its own line near the end of the response. Only output this when there is truly nothing left to do.
+**IMPORTANT**: The `<ralph_status>` tags are REQUIRED for detection — the same way `<ralph_notes>` tags are required for notes. Do NOT output bare "COMPLETED" text without the tags.
+
+### Completion Signal Examples
+
+CORRECT (will be detected):
+```
+<ralph_status>
+COMPLETED
+</ralph_status>
+```
+
+WRONG (will NOT be detected — loop continues forever):
+```
+COMPLETED
+```
 
 ---
 
