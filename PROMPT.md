@@ -15,14 +15,24 @@ You MUST implement exactly ONE requirement per iteration.
 
 Pick a single uncompleted requirement, implement it fully, then stop.
 
-### Self-Prioritisation
-Before starting work:
-1. Scan the SPECS for requirements that are already met but not marked complete - mark them complete first
-2. Identify all uncompleted requirements
-3. Choose the highest priority uncompleted requirement (consider dependencies, logical order, complexity)
-4. Announce which requirement you are implementing this iteration
+### Self-Prioritisation (REQUIRED)
+Before starting work, you MUST explicitly do the following in order:
 
-### File Modification Rules
+1. **Scan SPECS for requirements that are already met but not marked complete**
+   - If you find any, your ONE requirement for this iteration should be: **mark those as complete in SPECS**.
+   - Do not implement new functionality in the same iteration as marking already-met requirements complete.
+
+2. **Identify all remaining uncompleted requirements**
+   - List them clearly so it’s obvious what is left.
+
+3. **Choose the highest priority uncompleted requirement**
+   - Consider dependencies, logical order, and complexity.
+   - Prefer the smallest verifiable step that moves the project forward.
+
+4. **Announce which ONE requirement you are implementing this iteration**
+   - State it verbatim (or near-verbatim) so it’s unambiguous.
+
+## File Modification Rules
 - **SPECS file**: ONLY modify to mark completed requirements (change `- [ ]` to `- [x]`, or set `"completed": true` in JSON)
 - **`.ralph/notes.md`**: This file is APPEND-ONLY. Never delete or modify existing content. Only add new notes at the end.
 
