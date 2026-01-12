@@ -26,6 +26,9 @@ var (
 //go:embed PROMPT.md
 var embeddedPromptTemplate string
 
+//go:embed templates/CONVENTIONS.md
+var embeddedConventionsTemplate string
+
 // ANSI color codes
 const (
 	colorReset  = "\033[0m"
@@ -943,21 +946,8 @@ COMPLETED
 	if _, err := os.Stat(conventionsFile); err == nil {
 		fmt.Printf("%s⚠️  %s already exists. Skipping...%s\n", colorYellow, conventionsFile, colorReset)
 	} else {
-		conventionsContent := fmt.Sprintf(`# %s Conventions
-
-This file contains project-specific conventions and invariants that MUST be followed.
-
-## Quality Bar
-- Run tests and linters before considering work complete.
-- Ensure coverage is at least 75%% (if the project has coverage tooling).
-
-## Workflow
-- Prefer small, verifiable changes.
-- Update SPECS checkboxes as requirements are completed.
-
-## Notes
-- Add any additional project-specific rules/conventions here.
-`, projectName)
+		conventionsContent := strings.TrimSpace(embeddedConventionsTemplate) + "\n"
+		conventionsContent = strings.ReplaceAll(conventionsContent, "{{PROJECT_NAME}}", projectName)
 
 		if err := os.WriteFile(conventionsFile, []byte(conventionsContent), 0644); err != nil {
 			logError(fmt.Sprintf("Failed to create %s: %v", conventionsFile, err))
