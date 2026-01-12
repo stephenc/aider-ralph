@@ -25,11 +25,16 @@ Before starting work, you MUST explicitly do the following in order:
 2. **Identify all remaining uncompleted requirements**
    - List them clearly so it’s obvious what is left.
 
-3. **Choose the highest priority uncompleted requirement**
+3. **If there are NO remaining uncompleted requirements**
+   - You MUST output the completion signal exactly:
+     <promise>COMPLETED</promise>
+   - Then STOP. Do not propose further work, and do not continue the loop.
+
+4. **Choose the highest priority uncompleted requirement**
    - Consider dependencies, logical order, and complexity.
    - Prefer the smallest verifiable step that moves the project forward.
 
-4. **Announce which ONE requirement you are implementing this iteration**
+5. **Announce which ONE requirement you are implementing this iteration**
    - State it verbatim (or near-verbatim) so it’s unambiguous.
 
 ## File Modification Rules

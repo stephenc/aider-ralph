@@ -25,3 +25,8 @@ When a requirement is implemented, it should be marked complete by changing `- [
 - [x] the default prompt must make it absolutely clear that one and only one requirement is to be implemented at a time
 - [x] the init mode should populate the current prompt template as PROMPT.md and create a seed SPECS.md as well as the `.ralph/notes.md` for notes. The default prompt template should indicate that `.ralph/notes.md` is append only and SPECS.md is only to be updated to add completion markers for implemented requirements
 - [x] **PRIORITY** we should drink our own champaign. in the root of this repo should be the recommended PROMPT.md and we should embed it in the binary using go:embed
+- [x] Fix bug where it kept on looping even after all the specs were marked as done. this should be a fix to the prompt so that we do not assume (other than the prompt) the format of the specs.
+- [ ] Add feature to allow a project specific RULES.md containing project specific invariants. this should be seeded by --init and include things like running the tests and linters and ensuring coverage is at least 75%
+- [ ] Add a github actions workflow to build the binary for common targets; osx/arm64, osx/x86_64, linux on common architectures, windows. ideally use go's cross-compilation rather than running on multiple build agents and have this run as a release job whenever a tag is created
+- [ ] prepare the repo for a v0.0.1 release
+- [ ] make a v0.0.1 release pushing the tag
