@@ -351,7 +351,7 @@ func printBanner() {
 /_/ |_|\__,_/_/ .___/_/ /_/  /_/ |_|\__,_/_/ .___/_/ /_/
              /_/                          /_/`)
 	fmt.Println(colorReset)
-	fmt.Println(colorYellow + "Ralph Wiggum AI Loop Technique for Aider" + colorReset)
+	fmt.Println(colorYellow + "Hey — welcome to aider-ralph (the Ralph Wiggum loop for Aider)." + colorReset)
 	fmt.Println(colorCyan + `"I'm learnding!" - Ralph Wiggum` + colorReset)
 	fmt.Println()
 }
