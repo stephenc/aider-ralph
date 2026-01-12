@@ -15,4 +15,4 @@ An iterative AI development methodology that repeatedly feeds aider a prompt unt
 - [ ] the default prompt template should encourage self-prioritisation of the task to work on and identification of any requirements that are already met
 - [x] the default prompt must make it absolutely clear that one and only one requirement is to be implemented at a time
 - [ ] the init mode should populate the current prompt template as PROMPT.md and create a seed SPECS.md as well as the `.ralph/notes.md` for notes. The default prompt template should indicate that `.ralph/notes.md` is append only and SPECS.md is only to be updated to add completion markers for implemented requirements
-- [ ] **PRIORITY** we should drink our own champaign. in the root of this repo should be the recommended PROMPT.md and we should embed it in the binary using go:embed
+- [x] **PRIORITY** we should drink our own champaign. in the root of this repo should be the recommended PROMPT.md and we should embed it in the binary using go:embed
